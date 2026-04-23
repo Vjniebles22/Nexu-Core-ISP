@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Mikrotik {
+  id              String    @id @default(cuid())
+  name            String
+  ip              String
+  apiPort         Int       @default(8728)
+  apiSslPort      Int       @default(8729)
+  username       String
+  password       String
+  status          String    @default("offline")
+  lastConnected   DateTime?
+  useSsl         Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  clients         Client[]
+  queues          Queue[]
+  pppoeSecrets    PPPoESecret[]
+  networkStats   NetworkStatistic[]
+}
+
+model Plan {
+  id              String    @id @default(cuid())
+  name            String
+  downloadSpeed   Int
+  uploadSpeed     Int
+  dataLimit       Int
+  price           Float
+  priority        Int       @default(8)
+  queueType       String   @default("simple")
+  burstLimit      Int?
+  burstThreshold  Int?
+  minLimit        Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  clients         Client[]
+}
+
+model Client {
+  id              String    @id @default(cuid())
+  name            String
+  lastName        String
+  email           String   @unique
+  phone           String
+  idType          String   @default("CC")
+  dni             String   @unique
+  address         String
+  country         String   @default("CO")
+  department     String?
+  city            String?
+  planId          String
+  mikrotikId      String
+  pppoeUser       String   @unique
+  pppoePassword   String
+  status          String   @default("active")
+  contractId      String?
+  connectionType  String   @default("pppoe")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  plan            Plan     @relation(fields: [planId], references: [id])
+  mikrotik        Mikrotik @relation(fields: [mikrotikId], references: [id])
+  invoices       Invoice[]
+  queues         Queue[]
+  pppoeSecrets   PPPoESecret[]
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  clientId        String
+  amount         Float
+  status         String    @default("pending")
+  dueDate        DateTime
+  paidDate       DateTime?
+  period        String
+  description    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client          Client   @relation(fields: [clientId], references: [id])
+}
+
+model Queue {
+  id              String    @id @default(cuid())
+  mikrotikId      String
+  clientId       String?
+  name           String
+  target         String?
+  maxLimit       String?
+  maxUpload     String?
+  priority      Int       @default(8)
+  burstLimit     String?
+  burstThreshold String?
+  burstTime     String?
+  limitAt       String?
+  disabled      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  mikrotik        Mikrotik  @relation(fields: [mikrotikId], references: [id])
+  client         Client?   @relation(fields: [clientId], references: [id])
+}
+
+model PPPoESecret {
+  id              String    @id @default(cuid())
+  mikrotikId      String
+  clientId       String?
+  name           String
+  password       String
+  profile        String
+  remoteAddress  String?
+  localAddress   String?
+  disabled       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  mikrotik        Mikrotik  @relation(fields: [mikrotikId], references: [id])
+  client         Client?   @relation(fields: [clientId], references: [id])
+}
+
+model NetworkStatistic {
+  id              String    @id @default(cuid())
+  mikrotikId      String
+  cpuUsage        Float
+  ramUsage        Float
+  uptime         Int
+  rxBytes        Int       @default(0)
+  txBytes        Int       @default(0)
+  timestamp      DateTime  @default(now())
+
+  mikrotik        Mikrotik  @relation(fields: [mikrotikId], references: [id])
+}
+
+model Employee {
+  id              String    @id @default(cuid())
+  name            String
+  lastName       String
+  email          String   @unique
+  dni            String   @unique
+  role           String
+  phone          String?
+  salary         Float
+  hireDate       DateTime
+  status         String   @default("active")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  payrolls       Payroll[]
+}
+
+model Payroll {
+  id              String    @id @default(cuid())
+  employeeId      String
+  period         String
+  baseSalary     Float
+  bonuses       Float      @default(0)
+  deductions    Float      @default(0)
+  total          Float
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  employee       Employee @relation(fields: [employeeId], references: [id])
+}
+
+model Contract {
+  id              String    @id @default(cuid())
+  clientId       String    @unique
+  startDate     DateTime
+  endDate       DateTime?
+  terms         String?
+  status        String   @default("active")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model SystemSetting {
+  id              String    @id @default(cuid())
+  key            String    @unique
+  value         String
+  category      String
+  updatedAt      DateTime  @updatedAt
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  role            String    @default("admin")
+  resetToken      String?
+  resetTokenExpiry DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Notification {
+  id              String    @id @default(cuid())
+  title           String
+  message        String
+  type           String    @default("info")
+  read            Boolean   @default(false)
+  userId         String?
+  clientId      String?
+  invoiceId     String?
+  createdAt     DateTime  @default(now())
+}
+
+model PaymentConfig {
+  id              String    @id @default(cuid())
+  gateway         String
+  enabled         Boolean   @default(false)
+  clientId        String?
+  clientSecret   String?
+  publicKey       String?
+  accessToken     String?
+  merchantId     String?
+  accountId       String?
+  country         String    @default("CO")
+  currency        String    @default("COP")
+  testMode        Boolean   @default(true)
+  webhookUrl      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
